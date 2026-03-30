@@ -1,0 +1,109 @@
+#include <cstdio>
+#include <string>
+#include <fstream>
+#include <utility>
+
+#import <SSZipArchive/ZipArchive.h>
+
+#include "AlertUtils.h"
+
+#include "Core/Il2cpp.hpp"
+#include "Core/Dumper.hpp"
+
+#include "Core/config.h"
+
+void dump_thread();
+
+__attribute__((constructor)) static void onLoad()
+{
+    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    dispatch_async(queue, ^{
+        NSLog(@"=================STRAT DUMPPER=================");
+        dump_thread();
+        NSLog(@"=================END DUMPPER=================");
+    });
+}
+
+void dump_thread()
+{
+  sleep(WAIT_TIME_SEC);
+
+  showInfo([NSString stringWithFormat:@"Start Dumping"], 3.0);
+
+  NSString *docDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)[0];
+
+  NSString *appName = [[[NSBundle mainBundle] infoDictionary] objectForKey:(id)kCFBundleNameKey];
+
+  NSString *dumpFolderName = [NSString stringWithFormat:@"%@_%s", [appName stringByReplacingOccurrencesOfString:@" " withString:@""], DUMP_FOLDER];
+
+  NSString *dumpPath = [NSString stringWithFormat:@"%@/%@", docDir, dumpFolderName];
+  NSString *headersdumpPath = [NSString stringWithFormat:@"%@/%@", dumpPath, @"Assembly"];
+  NSString *zipdumpPath = [NSString stringWithFormat:@"%@.zip", dumpPath];
+
+  NSString *appPath = [[NSBundle mainBundle] bundlePath];
+  NSString *binaryPath = [NSString stringWithFormat:@"%s", BINARY_NAME];
+  if ([binaryPath isEqualToString:@"UnityFramework"])
+  {
+    binaryPath = [appPath stringByAppendingPathComponent:@"Frameworks/UnityFramework.framework/UnityFramework"];
+  }
+  else
+  {
+    binaryPath = [appPath stringByAppendingPathComponent:binaryPath];
+  }
+
+  Variables::IL2CPP::processAttach(binaryPath.UTF8String);
+
+  if (Dumper::status != Dumper::DumpStatus::SUCCESS) {
+    if (Dumper::status == Dumper::DumpStatus::ERROR_FRAMEWORK) {
+      showError(@"Error while dumping, error framework");
+      return;
+    }
+    if (Dumper::status == Dumper::DumpStatus::ERROR_SYMBOLS) {
+      showError(@"Error while dumping, error symbols");
+      return;
+    }
+  }
+
+  NSLog(@"UNITY_PATH: %@", dumpPath);
+
+  NSFileManager *fileManager = [NSFileManager defaultManager];
+
+  if ([fileManager fileExistsAtPath:dumpPath])
+  {
+    [fileManager removeItemAtPath:dumpPath error:nil];
+  }
+  if ([fileManager fileExistsAtPath:zipdumpPath])
+  {
+    [fileManager removeItemAtPath:zipdumpPath error:nil];
+  }
+
+  NSError *error = nil;
+  if (![fileManager createDirectoryAtPath:headersdumpPath withIntermediateDirectories:YES attributes:nil error:&error])
+  {
+    NSLog(@"Failed to create folders.\nError: %@", error);
+    showError([NSString stringWithFormat:@"Failed to create folders.\nError: %@", error]);
+    return;
+  }
+
+  UIAlertController *waitingAlert = nil;
+  showWaiting(@"Dumping...", &waitingAlert);
+  
+  Dumper::DumpStatus Dump =  Dumper::dump(dumpPath.UTF8String, headersdumpPath.UTF8String);
+
+  if ([fileManager fileExistsAtPath:dumpPath])
+  {
+    [SSZipArchive createZipFileAtPath:zipdumpPath withContentsOfDirectory:dumpPath];
+    [fileManager removeItemAtPath:dumpPath error:nil];
+  }
+
+  dismissWaiting(waitingAlert);
+
+  if (Dump != Dumper::DumpStatus::SUCCESS) {
+    showError(@"Error while dumping, check logs.txt");
+    return;
+  }
+
+  NSLog(@"Dump finished.");
+
+  showSuccess([NSString stringWithFormat:@"Dump at: \n%@", zipdumpPath]);
+}

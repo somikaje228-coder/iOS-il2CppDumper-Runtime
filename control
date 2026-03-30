@@ -1,0 +1,8 @@
+Package: com.ios.il2cppdumper
+Name: IOS Il2CppDumper
+Depends: mobilesubstrate
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Dump il2cpp data at runtime on iOS
+Author: DS Gaming - Mr D
+Section: Tweaks
