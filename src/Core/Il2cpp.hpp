@@ -118,6 +118,7 @@ namespace Variables
         extern char *(*il2cpp_type_get_name)(void *type);
         extern bool (*il2cpp_type_is_byref)(void *type);
         extern uint32_t (*il2cpp_type_get_attrs)(void *type);
+        extern void (*il2cpp_free)(void *ptr);
 
         void processAttach(const char *unitydir);
     }

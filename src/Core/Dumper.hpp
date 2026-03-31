@@ -50,6 +50,11 @@ namespace Dumper
 
     std::string getTypeName(void *type);
 
+    std::string StripNamespaces(const std::string& name);
+    std::string NormalizeTypeName(const std::string& name);
+    uintptr_t GetUnityFrameworkBase();
+    bool IsRootlessMode();
+
     std::string mapTypeName(const std::string& name);
 
     std::string getCTypeName(void *type);

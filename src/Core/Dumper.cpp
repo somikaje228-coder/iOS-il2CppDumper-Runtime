@@ -62,6 +62,7 @@ Dumper::DumpStatus Dumper::dump(const std::string &dir, const std::string &heade
         dumpOut << "// Image " << i << ": " << Variables::IL2CPP::il2cpp_image_get_name((void *)image) << std::endl;
     }
 
+    int typeDefIndex = 0;
     for (auto assembly : assemblies) {
         const void *image = Variables::IL2CPP::il2cpp_assembly_get_image(assembly);
         const char *imageName = Variables::IL2CPP::il2cpp_image_get_name((void *)image);
@@ -135,7 +136,6 @@ Dumper::DumpStatus Dumper::dump(const std::string &dir, const std::string &heade
             dumpOut << className;
             singleAssemblyOutPut << className;
 
-            // Base types
             std::vector<std::string> baseTypes;
             auto parent = Variables::IL2CPP::il2cpp_class_get_parent(klass);
             if (parent) {
@@ -164,6 +164,10 @@ Dumper::DumpStatus Dumper::dump(const std::string &dir, const std::string &heade
                     singleAssemblyOutPut << baseTypes[b];
                 }
             }
+
+            dumpOut << " // TypeDefIndex: " << typeDefIndex;
+            singleAssemblyOutPut << " // TypeDefIndex: " << typeDefIndex;
+            typeDefIndex++;
 
             dumpOut << std::endl;
             singleAssemblyOutPut << std::endl;
@@ -457,10 +461,15 @@ std::string Dumper::dumpMethod(void *klass) {
         if (!methodPointer || flags & METHOD_ATTRIBUTE_ABSTRACT) {
             outPut << "\t// RVA: -1 Offset: -1 VA: -1";
         } else {
-            uint64_t rva = (uint64_t)methodPointer - Variables::info.address;
+            uintptr_t base = Variables::info.address;
+            if (base == 0) base = GetUnityFrameworkBase();
+            uint64_t rva = (uint64_t)methodPointer - base;
             uint64_t va = rva;
-            if (Variables::info.index == 0) {
-                va += 0x100000000;
+            if (Variables::info.index == 0 || (Variables::info.index == 1 && IsRootlessMode())) {
+                va = rva + 0x100000000;
+            }
+            if (va > 0x1FFFFFFFFULL) {
+                va -= 0x100000000ULL;
             }
             outPut << "\t// RVA: 0x" << std::hex << std::uppercase << rva
                    << " Offset: 0x" << rva
@@ -619,13 +628,100 @@ std::string Dumper::mapTypeName(const std::string& name) {
     return result;
 }
 
-// IL2CPP type enum
+std::string Dumper::StripNamespaces(const std::string& name) {
+    std::string result;
+    result.reserve(name.size());
+    size_t wordStart = 0;
+    size_t i = 0;
+    while (i <= name.size()) {
+        char c = (i < name.size()) ? name[i] : '\0';
+        if (c == '<' || c == '>' || c == ',' || c == '[' || c == ']' || c == ' ' || c == '*' || c == '&' || c == '\0') {
+            if (i > wordStart) {
+                std::string word = name.substr(wordStart, i - wordStart);
+                size_t lastDot = word.rfind('.');
+                if (lastDot != std::string::npos) {
+                    word = word.substr(lastDot + 1);
+                }
+                result += word;
+            }
+            if (i < name.size()) result += c;
+            wordStart = i + 1;
+        }
+        i++;
+    }
+    return result;
+}
+
+std::string Dumper::NormalizeTypeName(const std::string& rawName) {
+    if (rawName.empty()) return "object";
+
+    std::string name = rawName;
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        static const std::vector<std::pair<std::string, std::string>> typeMappings = {
+            {"System.Collections.Generic.", ""},
+            {"System.Boolean", "bool"},
+            {"System.Decimal", "decimal"},
+            {"System.Runtime.CompilerServices.", ""},
+            {"System.Double", "double"},
+            {"System.Single", "float"},
+            {"System.Object", "object"},
+            {"System.String", "string"},
+            {"System.UInt32", "uint"},
+            {"System.UInt64", "ulong"},
+            {"System.Int32", "int"},
+            {"System.Int64", "long"},
+            {"System.Int16", "short"},
+            {"System.SByte", "sbyte"},
+            {"System.UInt16", "ushort"},
+            {"System.IntPtr", "IntPtr"},
+            {"System.Byte", "byte"},
+            {"System.Char", "char"},
+            {"System.Void", "void"},
+            {"UnityEngine.Events.", ""}
+        };
+
+        for (auto &m : typeMappings) {
+            size_t pos = 0;
+            while ((pos = name.find(m.first, pos)) != std::string::npos) {
+                name.replace(pos, m.first.size(), m.second);
+                pos += m.second.size();
+                changed = true;
+            }
+        }
+    }
+
+    return StripNamespaces(name);
+}
+
+uintptr_t Dumper::GetUnityFrameworkBase() {
+    for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+        const char *imgName = _dyld_get_image_name(i);
+        if (imgName && (strstr(imgName, "UnityFramework") || strstr(imgName, "UserFramework"))) {
+            return _dyld_get_image_vmaddr_slide(i);
+        }
+    }
+    return _dyld_get_image_vmaddr_slide(0);
+}
+
+bool Dumper::IsRootlessMode() {
+    const char *scheme = getenv("THEOS_PACKAGE_SCHEME");
+    if (scheme && strcmp(scheme, "rootless") == 0) {
+        return true;
+    }
+
+    if (Variables::info.name && strstr(Variables::info.name, "/var/containers/Bundle/Application")) {
+        return true;
+    }
+    return false;
+}
+
 #define IL2CPP_TYPE_GENERICINST 0x15
 
-// Minimal struct layout to read generic type args directly
 struct DumperGenericInst {
     uint32_t type_argc;
-    void** type_argv; // const Il2CppType**
+    void** type_argv;
 };
 
 struct DumperGenericContext {
@@ -684,6 +780,15 @@ std::string Dumper::getTypeName(void *type) {
     }
 
     if (klass) return mapTypeName(getClassName(klass));
+
+    if (Variables::IL2CPP::il2cpp_type_get_name) {
+        char* raw = Variables::IL2CPP::il2cpp_type_get_name(type);
+        std::string name = raw ? raw : "unknown";
+        if (raw && Variables::IL2CPP::il2cpp_free) {
+            Variables::IL2CPP::il2cpp_free(raw);
+        }
+        return NormalizeTypeName(name);
+    }
     return "unknown";
 }
 

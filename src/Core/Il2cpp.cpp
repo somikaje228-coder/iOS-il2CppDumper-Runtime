@@ -60,6 +60,7 @@ namespace Variables {
         int32_t (*il2cpp_method_get_param_count)(void *method) = nullptr;
         void *(*il2cpp_method_get_return_type)(void *method) = nullptr;
         uint32_t (*il2cpp_method_get_flags)(void *method, uint32_t *iflags) = nullptr;
+        uint16_t (*il2cpp_method_get_slot)(void *method) = nullptr;
 
         void *(*il2cpp_class_get_properties)(void *klass, void **iter) = nullptr;
         const char *(*il2cpp_property_get_name)(void *property) = nullptr;
@@ -80,6 +81,7 @@ namespace Variables {
         char *(*il2cpp_type_get_name)(void *type) = nullptr;
         bool (*il2cpp_type_is_byref)(void *type) = nullptr;
         uint32_t (*il2cpp_type_get_attrs)(void *type) = nullptr;
+        void (*il2cpp_free)(void *ptr) = nullptr;
 
 
         void processAttach(const char *dir) {
@@ -150,6 +152,7 @@ namespace Variables {
             GETAPI(char *, il2cpp_type_get_name, void *);
             GETAPI(bool, il2cpp_type_is_byref, void *);
             GETAPI(uint32_t, il2cpp_type_get_attrs, void *);
+            GETAPI(void, il2cpp_free, void *);
         }
     }
 }
