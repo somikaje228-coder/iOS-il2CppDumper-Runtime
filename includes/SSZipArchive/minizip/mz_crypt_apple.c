@@ -486,3 +486,11 @@ int32_t mz_crypt_sign_verify(uint8_t *message, int32_t message_size, uint8_t *si
 }
 
 #endif
+
+/***************************************************************************/
+
+int32_t mz_crypt_pbkdf2(uint8_t *password, int32_t password_length, uint8_t *salt, int32_t salt_length, int32_t iteration_count, uint8_t *key, int32_t key_length) {
+    if (CCKeyDerivationPBKDF(kCCPBKDF2, (const char *)password, password_length, salt, salt_length, kCCPRFHmacAlgSHA1, iteration_count, key, key_length) != kCCSuccess)
+        return MZ_PARAM_ERROR;
+    return MZ_OK;
+}
