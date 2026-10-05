@@ -1,4 +1,4 @@
-export THEOS = /home/dung/theos
+
 ARCHS = arm64
 DEBUG = 0
 FINALPACKAGE = 1
