@@ -4,8 +4,7 @@ THEOS_PACKAGE_SCHEME = rootless
 
 include $(THEOS)/makefiles/common.mk
 
-ADDITIONAL_CFLAGS += -Wno-unused-function -Wno-error=unused-function
-
+ADDITIONAL_CFLAGS += -Wno-unused-function -Wno-error=unused-function -DMZ_USE_COMMONCRYPTO -DHAVE_COMMONCRYPTO
 TWEAK_NAME = IOSIl2CppDumper
 
 IOSIl2CppDumper_FILES = src/Tweak.mm
