@@ -13,7 +13,7 @@ IOSIl2CppDumper_FILES += $(wildcard includes/SSZipArchive/*.c)
 IOSIl2CppDumper_FILES += $(wildcard includes/SSZipArchive/*.m)
 IOSIl2CppDumper_FILES += $(wildcard includes/SSZipArchive/minizip/*.c)
 
-IOSIl2CppDumper_CFLAGS = -fobjc-arc -Wno-deprecated-literal-operator -Wno-deprecated-declarations -Wno-c99-extensions
+IOSIl2CppDumper_CFLAGS = -fobjc-arc -Wno-deprecated-literal-operator -Wno-deprecated-declarations -Wno-c99-extensions -Wno-unused-function
 IOSIl2CppDumper_CCFLAGS = -std=c++17 -Iincludes
 IOSIl2CppDumper_LDFLAGS = -lz -liconv -ldl
 IOSIl2CppDumper_FRAMEWORKS = UIKit Foundation
