@@ -18,7 +18,7 @@ $(TWEAK_NAME)_FILES = src/Tweak.mm src/AlertUtils.mm \
 $(wildcard src/Core/*.cpp) \
 $(wildcard includes/SSZipArchive/SSZipArchive.m) $(wildcard includes/SSZipArchive/minizip/*.c)
 
-$(TWEAK_NAME)_CFLAGS = -fobjc-arc $(ZIP_ARCHIVE_DEFINES) -Wno-deprecated-declarations
+ $(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-deprecated-literal-operator $(ZIP_ARCHIVE_DEFINES)Wno-deprecated-declarations
 
 $(TWEAK_NAME)_CCFLAGS = -std=c++11 -Iincludes -I$(KITTYMEMORY_PATH) -O2 -DkNO_KEYSTONE -DkNO_SUBSTRATE
 
