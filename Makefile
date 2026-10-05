@@ -13,4 +13,4 @@ IOSIl2CppDumper_FILES += $(wildcard includes/SSZipArchive/*.c)
 IOSIl2CppDumper_FILES += $(wildcard includes/SSZipArchive/*.m)
 IOSIl2CppDumper_FILES += $(wildcard includes/minizip/*.c)
 
-IOSIl2CppDumper_FILES += $(wildcard includes/minizip/*.c)
+IOSIl2CppDumper_FILES += $(wildcard includes/SSZipArchive/minizip/*.c)
